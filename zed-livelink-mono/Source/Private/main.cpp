@@ -87,6 +87,7 @@ TArray<int> parentsIdx;
 int main(int argc, char **argv)
 {
 	ZEDConfig zed_config;
+	std::cout << "linked" << std::endl;
 	std::string zed_config_file("ZEDLiveLinkConfig.json"); // Default name and location.
 	if (argc == 2)
 	{
@@ -368,18 +369,27 @@ ERROR_CODE PopulateSkeletonsData(ZEDCamera* zed, ZEDConfig& config)
 		{
 			SL_BodyData bodyData = bodies.body_list[i];
 			if (bodyData.tracking_state == sl::OBJECT_TRACKING_STATE::OK)
-			{
-				if (!StreamedSkeletons.Contains(bodyData.id))  // If it's a new ID
+			{	
+				//new 
+				std::cout << bodyData.position << std::endl;
+				std::cout << "x:"<<bodyData.position.x << std::endl;
+				std::cout << "y:"<< bodyData.position.y << std::endl;
+				std::cout << "z:"<<bodyData.position.z << std::endl;
+				if ((bodyData.position.x - 170) * (bodyData.position.x - 170) + bodyData.position.y * bodyData.position.y <= 60 * 60)
 				{
-					UpdateSkeletonStaticData(FName(FString::FromInt(bodyData.id)));
-					StreamedSkeletonData data = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
-					StreamedSkeletons.Add(bodyData.id, data);
+					if (!StreamedSkeletons.Contains(bodyData.id))  // If it's a new ID
+					{
+						UpdateSkeletonStaticData(FName(FString::FromInt(bodyData.id)));
+						StreamedSkeletonData data = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
+						StreamedSkeletons.Add(bodyData.id, data);
+					}
+					else
+					{
+						StreamedSkeletons[bodyData.id] = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
+						remainingKeyList.Remove(bodyData.id);
+					}
 				}
-				else
-				{
-					StreamedSkeletons[bodyData.id] = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
-					remainingKeyList.Remove(bodyData.id);
-				}
+ 				
 			}
 		}
 		for (int index = 0; index < remainingKeyList.Num(); index++)
