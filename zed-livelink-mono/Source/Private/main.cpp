@@ -37,7 +37,6 @@ IMPLEMENT_APPLICATION(ZEDLiveLinkPlugin, "ZEDLiveLink");
 
 using namespace sl;
 using namespace std;
-
 static TSharedPtr<ILiveLinkProvider> LiveLinkProvider;
 
 struct StreamedSkeletonData
@@ -353,12 +352,33 @@ ERROR_CODE PopulateSkeletonsData(ZEDCamera* zed, ZEDConfig& config)
 	body_tracking_rt_params.detection_confidence_threshold = config.detection_confidence;
 	body_tracking_rt_params.minimum_keypoints_threshold = config.minimum_keypoints_threshold;
 	body_tracking_rt_params.skeleton_smoothing = config.skeleton_smoothing;
+
+	float body_area_x = config.body_position[0];
+	float body_area_y = config.body_position[1];
+	float body_area_r = config.body_position[2];
+
 	SL_Bodies bodies;
 	e = zed->RetrieveBodies(body_tracking_rt_params, bodies, 0);
 	if (e != ERROR_CODE::SUCCESS)
 	{
 		cout << "ERROR : retrieve objects : " << e << std::endl;
 		return e;
+	}
+
+	int k = 0;
+	if (config.enable_limit_one == 1)
+	{	
+		float dis = 0;
+	
+		for (int i = 0; i < bodies.nb_bodies; i++)
+		{
+			SL_BodyData bodyData = bodies.body_list[i];
+			if (dis < (bodyData.position.x) * (bodyData.position.x) + (bodyData.position.y) * (bodyData.position.y))
+			{
+				dis = (bodyData.position.x) * (bodyData.position.x) + (bodyData.position.y) * (bodyData.position.y);
+				k = i;
+			}
+		}
 	}
 	if (bodies.is_new == 1)
 	{
@@ -370,24 +390,38 @@ ERROR_CODE PopulateSkeletonsData(ZEDCamera* zed, ZEDConfig& config)
 			SL_BodyData bodyData = bodies.body_list[i];
 			if (bodyData.tracking_state == sl::OBJECT_TRACKING_STATE::OK)
 			{	
-				//new 
-				std::cout << bodyData.position << std::endl;
-				std::cout << "x:"<<bodyData.position.x << std::endl;
-				std::cout << "y:"<< bodyData.position.y << std::endl;
-				std::cout << "z:"<<bodyData.position.z << std::endl;
-				if ((bodyData.position.x - 170) * (bodyData.position.x - 170) + bodyData.position.y * bodyData.position.y <= 60 * 60)
+				//new set the area with a circle radius = 60cm, 170 cm in front of zed camera
+				if ((bodyData.position.x - body_area_x) * (bodyData.position.x - body_area_x) + (bodyData.position.y -body_area_y)* (bodyData.position.y - body_area_y) <= body_area_r * body_area_r)
 				{
-					if (!StreamedSkeletons.Contains(bodyData.id))  // If it's a new ID
-					{
-						UpdateSkeletonStaticData(FName(FString::FromInt(bodyData.id)));
-						StreamedSkeletonData data = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
-						StreamedSkeletons.Add(bodyData.id, data);
+					if (config.enable_limit_one == 1) {
+						if (i == k) {
+							if (!StreamedSkeletons.Contains(bodyData.id))  // If it's a new ID
+							{
+								UpdateSkeletonStaticData(FName(FString::FromInt(bodyData.id)));
+								StreamedSkeletonData data = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
+								StreamedSkeletons.Add(bodyData.id, data);
+							}
+							else
+							{
+								StreamedSkeletons[bodyData.id] = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
+								remainingKeyList.Remove(bodyData.id);
+							}
+						}
 					}
-					else
-					{
-						StreamedSkeletons[bodyData.id] = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
-						remainingKeyList.Remove(bodyData.id);
+					else {
+						if (!StreamedSkeletons.Contains(bodyData.id))  // If it's a new ID
+						{
+							UpdateSkeletonStaticData(FName(FString::FromInt(bodyData.id)));
+							StreamedSkeletonData data = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
+							StreamedSkeletons.Add(bodyData.id, data);
+						}
+						else
+						{
+							StreamedSkeletons[bodyData.id] = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
+							remainingKeyList.Remove(bodyData.id);
+						}
 					}
+					
 				}
  				
 			}

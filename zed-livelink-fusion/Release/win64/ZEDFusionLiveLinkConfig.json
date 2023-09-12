@@ -17,9 +17,9 @@
     },
      "InitFusionParameters":
      {
-       "json_config_filename": "",
+       "json_config_filename": "C:/Users/User11/Desktop/calibration_fusution.json",
        "output_performance_metrics": true,
-       "verbose": false
+       "verbose": true
 
      },
      "BodyTrackingFusionParameters":
