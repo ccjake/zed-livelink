@@ -67,7 +67,7 @@ void UpdateAnimationFrameData(StreamedSkeletonData StreamedSkeleton);
 ERROR_CODE PopulateSkeletonsData(ZEDCamera* cam, ZEDConfig& config);
 ERROR_CODE InitCamera(int argc, char **argv, ZEDConfig& config);
 FTransform BuildUETransformFromZEDTransform(SL_PoseData& pose);
-StreamedSkeletonData BuildSkeletonsTransformFromZEDObjects(SL_BodyData& objectData, double timestamp);
+StreamedSkeletonData BuildSkeletonsTransformFromZEDObjects(SL_BodyData& objectData, double timestamp, float position_offset[3]);
 
 bool IsConnected = false;
 bool enableBodyTracking = false;
@@ -279,7 +279,7 @@ ERROR_CODE InitCamera(int argc, char **argv, ZEDConfig& config)
 	return err;
 }
 
-StreamedSkeletonData BuildSkeletonsTransformFromZEDObjects(SL_BodyData& bodyData, double timestamp)
+StreamedSkeletonData BuildSkeletonsTransformFromZEDObjects(SL_BodyData& bodyData, double timestamp, float position_offset[3])
 {
 	StreamedSkeletonData SkeletonsData = StreamedSkeletonData(FName(FString::FromInt(bodyData.id)));
 	SkeletonsData.Timestamp = timestamp;
@@ -292,7 +292,7 @@ StreamedSkeletonData BuildSkeletonsTransformFromZEDObjects(SL_BodyData& bodyData
 		rigBoneTarget.Add(targetBone[i], FTransform::Identity);
 	}
 	
-	FVector position = FVector(bodyPosition.x, bodyPosition.y, bodyPosition.z);
+	FVector position = FVector(bodyPosition.x - position_offset[0], bodyPosition.y - position_offset[1], bodyPosition.z);
 	FQuat global_rotation = FQuat(bodyRotation.x, bodyRotation.y, bodyRotation.z, bodyRotation.w);
 
 	if (position.ContainsNaN())
@@ -365,21 +365,24 @@ ERROR_CODE PopulateSkeletonsData(ZEDCamera* zed, ZEDConfig& config)
 		return e;
 	}
 
-	int k = 0;
-	if (config.enable_limit_one == 1)
-	{	
-		float dis = 0;
-	
-		for (int i = 0; i < bodies.nb_bodies; i++)
-		{
-			SL_BodyData bodyData = bodies.body_list[i];
-			if (dis < (bodyData.position.x) * (bodyData.position.x) + (bodyData.position.y) * (bodyData.position.y))
-			{
-				dis = (bodyData.position.x) * (bodyData.position.x) + (bodyData.position.y) * (bodyData.position.y);
-				k = i;
-			}
-		}
-	}
+	//int k = -1;
+	//if (config.enable_limit_one == 1)
+	//{	
+	//	float dis = 0;
+	//
+	//	for (int i = 0; i < bodies.nb_bodies; i++)
+	//	{
+	//		SL_BodyData bodyData = bodies.body_list[i];
+	//		if (dis < (bodyData.position.x) * (bodyData.position.x) + (bodyData.position.y) * (bodyData.position.y))
+	//		{
+	//			dis = (bodyData.position.x) * (bodyData.position.x) + (bodyData.position.y) * (bodyData.position.y);
+	//			k = bodyData.id;
+	//		}
+	//	}
+	//}
+
+
+
 	if (bodies.is_new == 1)
 	{
 		TArray<int> remainingKeyList;
@@ -391,38 +394,27 @@ ERROR_CODE PopulateSkeletonsData(ZEDCamera* zed, ZEDConfig& config)
 			if (bodyData.tracking_state == sl::OBJECT_TRACKING_STATE::OK)
 			{	
 				//new set the area with a circle radius = 60cm, 170 cm in front of zed camera
-				if ((bodyData.position.x - body_area_x) * (bodyData.position.x - body_area_x) + (bodyData.position.y -body_area_y)* (bodyData.position.y - body_area_y) <= body_area_r * body_area_r)
+				if ((bodyData.position.x - body_area_x) * (bodyData.position.x - body_area_x) + (bodyData.position.y - body_area_y) * (bodyData.position.y - body_area_y) <= body_area_r * body_area_r)
 				{
-					if (config.enable_limit_one == 1) {
-						if (i == k) {
-							if (!StreamedSkeletons.Contains(bodyData.id))  // If it's a new ID
-							{
-								UpdateSkeletonStaticData(FName(FString::FromInt(bodyData.id)));
-								StreamedSkeletonData data = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
-								StreamedSkeletons.Add(bodyData.id, data);
-							}
-							else
-							{
-								StreamedSkeletons[bodyData.id] = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
-								remainingKeyList.Remove(bodyData.id);
-							}
-						}
+					//cout << "x:" << bodyData.position.x << ",y:" << bodyData.position.y << ",z:" << bodyData.position.z << endl;
+					
+					
+					if (!StreamedSkeletons.Contains(bodyData.id))  // If it's a new ID
+					{
+						UpdateSkeletonStaticData(FName(FString::FromInt(bodyData.id)));
+						StreamedSkeletonData data = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp,config.body_position);
+						StreamedSkeletons.Add(bodyData.id, data);
 					}
-					else {
-						if (!StreamedSkeletons.Contains(bodyData.id))  // If it's a new ID
-						{
-							UpdateSkeletonStaticData(FName(FString::FromInt(bodyData.id)));
-							StreamedSkeletonData data = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
-							StreamedSkeletons.Add(bodyData.id, data);
-						}
-						else
-						{
-							StreamedSkeletons[bodyData.id] = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp);
-							remainingKeyList.Remove(bodyData.id);
-						}
+					else
+					{
+						StreamedSkeletons[bodyData.id] = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp,config.body_position);
+						remainingKeyList.Remove(bodyData.id);
 					}
 					
+					
 				}
+					
+				
  				
 			}
 		}
