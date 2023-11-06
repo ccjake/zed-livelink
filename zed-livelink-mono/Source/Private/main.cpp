@@ -37,6 +37,7 @@ IMPLEMENT_APPLICATION(ZEDLiveLinkPlugin, "ZEDLiveLink");
 
 using namespace sl;
 using namespace std;
+
 static TSharedPtr<ILiveLinkProvider> LiveLinkProvider;
 
 struct StreamedSkeletonData
@@ -86,7 +87,6 @@ TArray<int> parentsIdx;
 int main(int argc, char **argv)
 {
 	ZEDConfig zed_config;
-	std::cout << "linked" << std::endl;
 	std::string zed_config_file("ZEDLiveLinkConfig.json"); // Default name and location.
 	if (argc == 2)
 	{
@@ -293,6 +293,7 @@ StreamedSkeletonData BuildSkeletonsTransformFromZEDObjects(SL_BodyData& bodyData
 		rigBoneTarget.Add(targetBone[i], FTransform::Identity);
 	}
 	
+	//FVector position = FVector(bodyPosition.x, bodyPosition.y, bodyPosition.z);
 	FVector position = FVector(bodyPosition.x - position_offset[0], bodyPosition.y - position_offset[1], bodyPosition.z);
 	FQuat global_rotation = FQuat(bodyRotation.x, bodyRotation.y, bodyRotation.z, bodyRotation.w);
 
@@ -353,11 +354,12 @@ ERROR_CODE PopulateSkeletonsData(ZEDCamera* zed, ZEDConfig& config)
 	body_tracking_rt_params.detection_confidence_threshold = config.detection_confidence;
 	body_tracking_rt_params.minimum_keypoints_threshold = config.minimum_keypoints_threshold;
 	body_tracking_rt_params.skeleton_smoothing = config.skeleton_smoothing;
-
+	
 	float body_area_x = config.body_position[0];
 	float body_area_y = config.body_position[1];
 	float body_area_r = config.body_position[2];
 
+	
 	SL_Bodies bodies;
 	e = zed->RetrieveBodies(body_tracking_rt_params, bodies, 0);
 	if (e != ERROR_CODE::SUCCESS)
@@ -366,24 +368,6 @@ ERROR_CODE PopulateSkeletonsData(ZEDCamera* zed, ZEDConfig& config)
 		return e;
 	}
 
-	//int k = -1;
-	//if (config.enable_limit_one == 1)
-	//{	
-	//	float dis = 0;
-	//
-	//	for (int i = 0; i < bodies.nb_bodies; i++)
-	//	{
-	//		SL_BodyData bodyData = bodies.body_list[i];
-	//		if (dis < (bodyData.position.x) * (bodyData.position.x) + (bodyData.position.y) * (bodyData.position.y))
-	//		{
-	//			dis = (bodyData.position.x) * (bodyData.position.x) + (bodyData.position.y) * (bodyData.position.y);
-	//			k = bodyData.id;
-	//		}
-	//	}
-	//}
-
-
-
 	if (bodies.is_new == 1)
 	{
 		TArray<int> remainingKeyList;
@@ -391,32 +375,29 @@ ERROR_CODE PopulateSkeletonsData(ZEDCamera* zed, ZEDConfig& config)
 
 		for (int i = 0; i < bodies.nb_bodies; i++)
 		{
+			
 			SL_BodyData bodyData = bodies.body_list[i];
+
+			std::cout << "LEFT_SHOULDER :" << bodyData.keypoint[12].x << "," << bodyData.keypoint[12].y << std::endl;
+			std::cout << "RIGHT_SHOULDER:" << bodyData.keypoint[13].x << "," << bodyData.keypoint[13].y << std::endl;
+			Sleep(1000);
 			if (bodyData.tracking_state == sl::OBJECT_TRACKING_STATE::OK)
-			{	
-				//new set the area with a circle radius = 60cm, 170 cm in front of zed camera
+			{
 				if ((bodyData.position.x - body_area_x) * (bodyData.position.x - body_area_x) + (bodyData.position.y - body_area_y) * (bodyData.position.y - body_area_y) <= body_area_r * body_area_r)
 				{
-					//cout << "x:" << bodyData.position.x << ",y:" << bodyData.position.y << ",z:" << bodyData.position.z << endl;
-					
-					
 					if (!StreamedSkeletons.Contains(bodyData.id))  // If it's a new ID
 					{
 						UpdateSkeletonStaticData(FName(FString::FromInt(bodyData.id)));
-						StreamedSkeletonData data = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp,config.body_position);
+						StreamedSkeletonData data = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp, config.body_position);
 						StreamedSkeletons.Add(bodyData.id, data);
 					}
 					else
 					{
-						StreamedSkeletons[bodyData.id] = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp,config.body_position);
+						StreamedSkeletons[bodyData.id] = BuildSkeletonsTransformFromZEDObjects(bodyData, bodies.timestamp, config.body_position);
 						remainingKeyList.Remove(bodyData.id);
 					}
-					
-					
 				}
-					
 				
- 				
 			}
 		}
 		for (int index = 0; index < remainingKeyList.Num(); index++)

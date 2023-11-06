@@ -168,8 +168,10 @@ struct ZEDConfig {
 	float grab_compute_capping_fps = 0;
 	bool enable_image_validity_check = false;
 
-	float body_position[3] = {170.0,0.0,60.0};
+
+	float body_position[3] = { 170.0,0.0,60.0 };
 	bool enable_limit_one;
+
 
 	void read(nlohmann::json& injson) {
 
@@ -198,9 +200,6 @@ struct ZEDConfig {
 		enable_body_tracking_module = injson["BodyTrackingParameters"]["enable_module"];
 		std::cout << "enable_body_tracking_module : " << enable_body_tracking_module << std::endl;
 
-		enable_limit_one = injson["BodyTrackingParameters"]["limit_one"];
-		std::cout << "enable_limit_one :" << enable_limit_one << std::endl;
-
 		if (enable_body_tracking_module)
 		{
 			detection_model = toDetectionModel(injson["BodyTrackingParameters"]["detection_model"]);
@@ -223,14 +222,14 @@ struct ZEDConfig {
 
 			skeleton_smoothing = injson["BodyTrackingParameters"]["skeleton_smoothing"];
 			std::cout << "skeleton_smoothing : " << skeleton_smoothing << std::endl;
+			
 
 			body_position[0] = injson["BodyTrackingParameters"]["body_position"]["x"];
 			body_position[1] = injson["BodyTrackingParameters"]["body_position"]["y"];
 			body_position[2] = injson["BodyTrackingParameters"]["body_position"]["r"];
-			std::cout << "skeleton_smoothing : x:" << body_position[0]<< " y: "<< body_position[1]<< " r: "<< body_position[2] << std::endl;
+			std::cout << "skeleton_smoothing : x:" << body_position[0] << " y: " << body_position[1] << " r: " << body_position[2] << std::endl;
+
 		
-		
-			
 		
 		}
 

@@ -23,6 +23,8 @@
     "confidence": 50,
     "max_range": -1,
     "minimum_keypoints_threshold" : -1,
-	"skeleton_smoothing": 0.2
+	"skeleton_smoothing": 0.2,
+  "body_position": {"x":110.0, "y":0.0, "r": 60.0},
+  "limit_one": true
   }
 }
